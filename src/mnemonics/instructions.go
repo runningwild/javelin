@@ -4,8 +4,6 @@
 package mnemonics
 
 import (
-	"fmt"
-
 	"github.com/runningwild/javelin/machine"
 )
 
@@ -15,39 +13,6 @@ type MnemonicInstruction interface {
 
 type OpcodeInstruction interface {
 	// Execute(m *Machine)
-}
-
-type Instruction struct {
-	AddGeneral *AddGeneral `@@ |`
-	AddNeon    *AddNeon    `@@`
-}
-
-type AddGeneral struct {
-	Rd int `"add" @RegisterGeneral`
-	Rn int `  "," @RegisterGeneral`
-	Rm int `  "," @RegisterGeneral`
-}
-
-type AddNeon struct {
-	Vd RegisterNeon `"add" @RegisterNeon`
-	Vn RegisterNeon `  "," @RegisterNeon`
-	Vm RegisterNeon `  "," @RegisterNeon`
-}
-
-type RegisterNeon struct {
-	V int    `@RegisterNeon`
-	T string `@TypeSpecifier`
-}
-
-func (i *AddGeneral) Validate() ([]OpcodeInstruction, error) {
-	return nil, nil
-}
-
-func (i *AddNeon) Validate() ([]OpcodeInstruction, error) {
-	if i.Vd.T != i.Vn.T || i.Vd.T != i.Vm.T {
-		return nil, fmt.Errorf("type specifiers do not match: (%s, %s, %s))", i.Vd.T, i.Vn.T, i.Vm.T)
-	}
-	return nil, nil
 }
 
 type Machine struct{}
@@ -117,11 +82,11 @@ type OpcodeAddShiftedRegister struct {
 
 func (op *OpcodeAddShiftedRegister) Encode() uint32 {
 	return uint32(op.Sf)<<31 |
-		(0b0<<30) |
-		(0b0<<29) |
-		(0b01011<<24) |
+		(0b0 << 30) |
+		(0b0 << 29) |
+		(0b01011 << 24) |
 		uint32(op.Shift)<<22 |
-		(0b0<<21) |
+		(0b0 << 21) |
 		uint32(op.Rm)<<16 |
 		uint32(op.Imm)<<10 |
 		uint32(op.Rn)<<5 |

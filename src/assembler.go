@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -40,44 +42,64 @@ type asmInstructions struct {
 }
 
 type AsmInstruction struct {
-	ADD *ADDInstruction `@@`
+	Add *Add `@@`
 }
 
-type ADDInstruction struct {
-	R []int          `"add" ((@RegisterGeneral "," @RegisterGeneral "," @RegisterGeneral) |`
-	V []RegisterNeon `       (@@ "," @@ "," @@))`
+type Add struct {
+	AddImmediate        *AddImmediate        `"add" (@@ |`
+	AddShiftedRegister  *AddShiftedRegister  `       @@ |`
+	AddExtendedRegister *AddExtendedRegister `       @@ |`
+	AddVector           *AddVector           `       @@ )`
+}
+
+type AddImmediate struct {
+	Rd  int    `@RegisterGeneral ","`
+	Rn  int    `@RegisterGeneral ","`
+	Imm string `"#" @Integer`
+}
+
+func (i *AddImmediate) Validate() ([]OpcodeInstruction, error) {
+	immStr := i.Imm
+	base := 10
+	if strings.HasPrefix(immStr, "0x") {
+		immStr = immStr[2:]
+		base = 16
+	}
+	imm, err := strconv.ParseInt(immStr, base, 64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse immediate: %w", err)
+	}
+	if imm&(^0xfff) != 0 {
+		return nil, fmt.Errorf("immediate %d overflows 12 bits", imm)
+	}
+	return nil, nil
+}
+
+type AddShiftedRegister struct {
+	Rd  int     `@RegisterGeneral  ","`
+	Rn  int     `@RegisterGeneral  ","`
+	Rm  int     `@RegisterGeneral (","`
+	Dir *string `  @Shift`
+	Amt *int    `  @Integer)?`
+}
+
+type AddExtendedRegister struct {
+	Rd     int     `@RegisterGeneral  ","`
+	Rn     int     `@RegisterGeneral  ","`
+	Rm     int     `@RegisterGeneral (","`
+	Extend *string `  @(Extend|"lsl")`
+	Amt    *int    `  @Integer?)?`
+}
+
+type AddVector struct {
+	Vd RegisterNeon `@RegisterNeon ","`
+	Vn RegisterNeon `@RegisterNeon ","`
+	Vm RegisterNeon `@RegisterNeon`
 }
 
 type RegisterNeon struct {
 	V int    `@RegisterNeon`
 	T string `@TypeSpecifier`
-}
-
-func (i *ADDInstruction) Execute(m *Machine) {
-	if len(i.R) > 0 {
-		m.R[i.R[0]] = m.R[i.R[1]] + m.R[i.R[2]]
-	} else {
-		// do neon
-	}
-}
-
-func (i *ADDInstruction) Validate() error {
-	if (i.R != nil) == (i.V != nil) {
-		return fmt.Errorf("exactly one of general or neon registers should be specified")
-	}
-	if i.R != nil {
-		if got, want := len(i.R), 3; got != want {
-			return fmt.Errorf("general registers specified but got %d instead of the expected %d", got, want)
-		}
-	} else {
-		if got, want := len(i.V), 3; got != want {
-			return fmt.Errorf("neon registers specified but got %d instead of the expected %d", got, want)
-		}
-		if i.V[0].T != i.V[1].T || i.V[0].T != i.V[2].T {
-			return fmt.Errorf("type specifiers do not match: (%s, %s, %s))", i.V[0].T, i.V[1].T, i.V[2].T)
-		}
-	}
-	return nil
 }
 
 var ( // global parser variables
@@ -87,7 +109,10 @@ var ( // global parser variables
 		{"RegisterGeneral", `r([12]?[0-9]|30|31)\b`},
 		{"RegisterNeon", `v([12]?[0-9]|30|31)\b`},
 		{"TypeSpecifier", `[.](16b)`},
-		{"Punct", `,`},
+		{"Integer", `[0-9]+|0x[a-fA-F0-9]`},
+		{"Shift", `lsl|lsr|asr`},
+		{"Extend", `(ux|sx)(t[bhwx])`},
+		{"Punct", `[,#]`},
 	},
 	)
 	parser = participle.MustBuild[asmInstructions](
@@ -109,8 +134,17 @@ func ParseProgram(line string) (*AsmProgram, error) {
 	var p AsmProgram
 	for _, i := range program.Instructions {
 		switch {
-		case i.ADD != nil:
-			p.Instructions = append(p.Instructions, i.ADD)
+		case i.Add != nil:
+			switch {
+			case i.Add.AddImmediate != nil:
+				p.Instructions = append(p.Instructions, i.Add.AddImmediate)
+			case i.Add.AddExtendedRegister != nil:
+				p.Instructions = append(p.Instructions, i.Add.AddExtendedRegister)
+			case i.Add.AddShiftedRegister != nil:
+				p.Instructions = append(p.Instructions, i.Add.AddShiftedRegister)
+			case i.Add.AddVector != nil:
+				p.Instructions = append(p.Instructions, i.Add.AddVector)
+			}
 		}
 	}
 	fmt.Printf("root: %v\n", program)
