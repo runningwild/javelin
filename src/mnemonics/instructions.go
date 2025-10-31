@@ -116,7 +116,61 @@ type OpcodeAddShiftedRegister struct {
 }
 
 func (op *OpcodeAddShiftedRegister) Encode() uint32 {
+	return uint32(op.Sf)<<31 |
+		(0b0<<30) |
+		(0b0<<29) |
+		(0b01011<<24) |
+		uint32(op.Shift)<<22 |
+		(0b0<<21) |
+		uint32(op.Rm)<<16 |
+		uint32(op.Imm)<<10 |
+		uint32(op.Rn)<<5 |
+		uint32(op.Rd)
 }
 
-func (op *OpcodeAddShiftedRegister) Execute(m *Machine) {
+func (op *OpcodeAddShiftedRegister) Execute(m *machine.Machine) {
+	var datasize uint = 32
+	if op.Sf&0x01 == 1 {
+		datasize = 64
+	}
+
+	var op1 uint64
+	if op.Rn&0b11111 == 31 {
+		op1 = m.SP
+	} else {
+		op1 = m.R[op.Rn&0b11111]
+	}
+
+	var op2 uint64
+	op2 = m.R[op.Rm&0b11111]
+
+	shift_type := op.Shift
+	shift_amount := uint64(op.Imm)
+
+	var shifted_op2 uint64
+	switch shift_type {
+	case 0b00: // LSL
+		shifted_op2 = op2 << shift_amount
+	case 0b01: // LSR
+		shifted_op2 = op2 >> shift_amount
+	case 0b10: // ASR
+		if datasize == 32 {
+			shifted_op2 = uint64(int32(op2) >> shift_amount)
+		} else {
+			shifted_op2 = uint64(int64(op2) >> shift_amount)
+		}
+	}
+
+	var result uint64
+	if datasize == 32 {
+		result = uint64(uint32(op1) + uint32(shifted_op2))
+	} else {
+		result = op1 + shifted_op2
+	}
+
+	if op.Rd&0b11111 == 31 {
+		m.SP = result
+	} else {
+		m.R[op.Rd&0b11111] = result
+	}
 }
