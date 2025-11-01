@@ -1,4 +1,4 @@
-module javelin
+module github.com/runningwild/javelin
 
 go 1.25.1
 

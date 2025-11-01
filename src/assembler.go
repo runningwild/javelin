@@ -7,6 +7,8 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+
+	"github.com/runningwild/javelin/machine"
 )
 
 // InstructionType defines the type of ARM instruction
@@ -28,7 +30,7 @@ type MnemonicInstruction interface {
 }
 
 type OpcodeInstruction interface {
-	Execute(m *Machine)
+	Execute(m *machine.Machine)
 }
 
 // AST structures for participle
