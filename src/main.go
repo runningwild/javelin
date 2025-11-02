@@ -8,6 +8,7 @@ import (
 func main() {
 	addAsm := `
 add r2,r3, r5
+add r2,r3, #5
 add v15.16b, v2.16b, v5.16b
 `
 	p, err := ParseProgram(addAsm)

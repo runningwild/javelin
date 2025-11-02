@@ -1,24 +1,19 @@
 // Package mnemonics contains everything necessary for parsing assembly.  This does the conversion
 // into mnemonics, which are the instructions written by the programmer, which then know how to
 // convert themselves into opcodes, which are the instructions actually executed.
-package mnemonics
+package opcode
 
 import (
 	"github.com/runningwild/javelin/machine"
 )
 
-type MnemonicInstruction interface {
-	Validate() ([]OpcodeInstruction, error)
+type Instruction interface {
+	Encode() uint32
+	Execute(m *machine.Machine)
 }
-
-type OpcodeInstruction interface {
-	// Execute(m *Machine)
-}
-
-type Machine struct{}
 
 // C6.2.5 ADD (immediate)
-type OpcodeAddImmedite struct {
+type AddImmedite struct {
 	Sf byte // 1 bit
 	// Op = b0
 	// S  = b0
@@ -29,7 +24,7 @@ type OpcodeAddImmedite struct {
 	Rd  uint16 // 5 bits
 }
 
-func (op *OpcodeAddImmedite) Encode() uint32 {
+func (op *AddImmedite) Encode() uint32 {
 	return uint32(op.Sf)<<31 |
 		0b0<<30 |
 		0b0<<29 |
@@ -40,7 +35,7 @@ func (op *OpcodeAddImmedite) Encode() uint32 {
 		uint32(op.Rd)
 }
 
-func (op *OpcodeAddImmedite) Execute(m *machine.Machine) {
+func (op *AddImmedite) Execute(m *machine.Machine) {
 	var datamask uint64 = 0xffffffff
 	if op.Sf&0x01 == 1 {
 		datamask = 0xffffffffffffffff
@@ -67,7 +62,7 @@ func (op *OpcodeAddImmedite) Execute(m *machine.Machine) {
 }
 
 // C6.2.6 ADD (shifted register)
-type OpcodeAddShiftedRegister struct {
+type AddShiftedRegister struct {
 	Sf byte // 1 bit
 	// Op = b0
 	// S  = b0
@@ -80,7 +75,7 @@ type OpcodeAddShiftedRegister struct {
 	Rd  uint16 // 5 bits
 }
 
-func (op *OpcodeAddShiftedRegister) Encode() uint32 {
+func (op *AddShiftedRegister) Encode() uint32 {
 	return uint32(op.Sf)<<31 |
 		(0b0 << 30) |
 		(0b0 << 29) |
@@ -93,7 +88,7 @@ func (op *OpcodeAddShiftedRegister) Encode() uint32 {
 		uint32(op.Rd)
 }
 
-func (op *OpcodeAddShiftedRegister) Execute(m *machine.Machine) {
+func (op *AddShiftedRegister) Execute(m *machine.Machine) {
 	var datasize uint = 32
 	if op.Sf&0x01 == 1 {
 		datasize = 64
