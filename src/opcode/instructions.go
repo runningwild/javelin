@@ -134,3 +134,69 @@ func (op *AddShiftedRegister) Execute(m *machine.Machine) {
 		m.R[op.Rd&0b11111] = result
 	}
 }
+
+// C6.2.4 ADD (extended register)
+type AddExtendedRegister struct {
+	Sf byte // 1 bit
+	// Op = b0
+	// S  = b0
+	// OpCode = b01011
+	// _ = b1
+	Opt byte   // 2 bits
+	Imm uint16 // 3 bits
+	// _ = b00
+	Rm  uint16 // 5 bits
+	Rn  uint16 // 5 bits
+	Rd  uint16 // 5 bits
+}
+
+func (op *AddExtendedRegister) Encode() uint32 {
+	return uint32(op.Sf)<<31 |
+		(0b0 << 30) |
+		(0b0 << 29) |
+		(0b01011 << 24) |
+		(0b1 << 21) |
+		uint32(op.Opt)<<19 |
+		uint32(op.Imm)<<16 |
+		(0b00 << 14) |
+		uint32(op.Rm)<<10 |
+		uint32(op.Rn)<<5 |
+		uint32(op.Rd)
+}
+
+func (op *AddExtendedRegister) Execute(m *machine.Machine) {
+	// TODO: Implement this
+}
+
+// C6.2.1 ADD (vector)
+type AddVector struct {
+	// Q = bit 30
+	Q byte // 1 bit
+	// Op = b0
+	// U = bit 28
+	U byte // 1 bit
+	// OpCode = b010100
+	Size byte // 2 bits
+	// OpCode2 = b1
+	Rm   uint16 // 5 bits
+	// OpCode3 = b0001
+	Rn   uint16 // 5 bits
+	Rd   uint16 // 5 bits
+}
+
+func (op *AddVector) Encode() uint32 {
+	return uint32(op.Q)<<30 |
+		(0b0 << 29) |
+		uint32(op.U)<<28 |
+		(0b010100 << 22) |
+		uint32(op.Size)<<20 |
+		(0b1 << 19) |
+		uint32(op.Rm)<<14 |
+		(0b0001 << 10) |
+		uint32(op.Rn)<<5 |
+		uint32(op.Rd)
+}
+
+func (op *AddVector) Execute(m *machine.Machine) {
+	// TODO: Implement this
+}
