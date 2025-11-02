@@ -93,10 +93,14 @@ func lexCode(l *lexer) stateFn {
 		case r == 0:
 			l.emit(tokenEOF)
 			return nil
+		case r == '\n':
+			l.emit(tokenNewline)
 		case unicode.IsSpace(r):
 			l.ignore()
 		case r == ',':
 			l.emit(tokenComma)
+		case r == '#':
+			return lexNumber
 		case r == 'X' || r == 'x' || r == 'W' || r == 'w':
 			l.backup()
 			return lexRegister
@@ -123,6 +127,10 @@ func lexIdentifier(l *lexer) stateFn {
 }
 
 func lexNumber(l *lexer) stateFn {
+	// Optional '#' prefix
+	if l.peek() == '#' {
+		l.next()
+	}
 	// TODO: Handle hex
 	for {
 		r := l.next()

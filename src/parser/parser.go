@@ -82,14 +82,15 @@ func (p *Parser) parseAdd() ([]opcode.Instruction, error) {
 		// TODO: Handle shifting
 		return []opcode.Instruction{&opcode.AddShiftedRegister{Rd: uint16(rd), Rn: uint16(rn), Rm: uint16(rm)}}, nil
 	case tokenNumber:
-		imm, err := strconv.Atoi(p.cur.val)
+		immString := p.cur.val
+		if immString[0] == '#' {
+			immString = immString[1:]
+		}
+		imm, err := strconv.Atoi(immString)
 		if err != nil {
 			return nil, fmt.Errorf("invalid immediate value: %v", err)
 		}
-		var sf byte = 1
-		var sh byte = 0
-		// TODO: This is not right
-		return []opcode.Instruction{&opcode.AddImmedite{Sf: sf, Sh: sh, Rd: uint16(rd), Rn: uint16(rn), Imm: uint16(imm)}}, nil
+		return []opcode.Instruction{&opcode.AddImmedite{Rd: uint16(rd), Rn: uint16(rn), Imm: uint16(imm)}}, nil
 	default:
 		return nil, fmt.Errorf("unexpected token in add instruction: %s", p.cur)
 	}
