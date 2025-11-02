@@ -18,8 +18,8 @@ type Machine struct {
 	Memory []byte
 }
 
-// NewMachine creates a new Machine with initialized memory.
-func NewMachine(memorySize int) *Machine {
+// New creates a new Machine with initialized memory.
+func New(memorySize int) *Machine {
 	return &Machine{
 		Memory: make([]byte, memorySize),
 	}

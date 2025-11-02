@@ -5,11 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/alecthomas/participle/v2"
-	"github.com/alecthomas/participle/v2/lexer"
-
 	"github.com/runningwild/javelin/machine"
-	opcode "github.com/runningwild/javelin/opcodes"
+	"github.com/runningwild/javelin/opcode"
 )
 
 // InstructionType defines the type of ARM instruction
@@ -184,49 +181,4 @@ func (i *AddVector) Validate() ([]opcode.Instruction, error) {
 type RegisterNeon struct {
 	V int    `@RegisterNeon`
 	T string `@TypeSpecifier`
-}
-
-var ( // global parser variables
-	asmLexer = lexer.MustSimple([]lexer.SimpleRule{
-		{"whitespace", `\s+`},
-		{"Mnemonic", `add`},
-		{"RegisterGeneral", `r([12]?[0-9]|30|31)\b`},
-		{"RegisterNeon", `v([12]?[0-9]|30|31)\b`},
-		{"TypeSpecifier", `[.](16b)`},
-		{"Integer", `[0-9]+|0x[a-fA-F0-9]`},
-		{"Shift", `lsl|lsr|asr`},
-		{"Extend", `(ux|sx)(t[bhwx])`},
-		{"Punct", `[,#]`},
-	},
-	)
-	parser = participle.MustBuild[asmInstructions](
-		participle.Lexer(asmLexer),
-		participle.Elide("whitespace"),
-		participle.Map(func(t lexer.Token) (lexer.Token, error) {
-			t.Value = t.Value[1:]
-			return t, nil
-		}, "RegisterGeneral", "RegisterNeon", "TypeSpecifier"),
-	)
-)
-
-// ParseProgram parses a single line of ARM assembly into an Instruction struct
-func ParseProgram(line string) (*AsmProgram, error) {
-	program, err := parser.ParseString("", line)
-	if err != nil {
-		return nil, fmt.Errorf("parsing error: %w", err)
-	}
-	var p AsmProgram
-	for _, i := range program.Instructions {
-		switch {
-		case i.Add != nil:
-			p.Instructions = append(p.Instructions, i.Add)
-		}
-	}
-	fmt.Printf("root: %v\n", program)
-	for _, i := range p.Instructions {
-		if _, err := i.Validate(); err != nil {
-			return nil, err
-		}
-	}
-	return &p, nil
 }
