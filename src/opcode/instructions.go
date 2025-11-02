@@ -165,38 +165,105 @@ func (op *AddExtendedRegister) Encode() uint32 {
 }
 
 func (op *AddExtendedRegister) Execute(m *machine.Machine) {
-	// TODO: Implement this
+	var datasize uint = 32
+	if op.Sf&0x01 == 1 {
+		datasize = 64
+	}
+
+	var op1 uint64
+	if op.Rn&0b11111 == 31 {
+		op1 = m.SP
+	} else {
+		op1 = m.R[op.Rn&0b11111]
+	}
+
+	op2 := m.R[op.Rm&0b11111]
+
+	var extended_op2 uint64
+	extend_type := op.Opt
+	shift := op.Imm
+
+	switch extend_type {
+	case 0b000: // UXTB
+		extended_op2 = uint64(uint8(op2))
+	case 0b001: // UXTH
+		extended_op2 = uint64(uint16(op2))
+	case 0b010: // UXTW
+		extended_op2 = uint64(uint32(op2))
+	case 0b011: // UXTX
+		extended_op2 = op2
+	case 0b100: // SXTB
+		extended_op2 = uint64(int8(op2))
+	case 0b101: // SXTH
+		extended_op2 = uint64(int16(op2))
+	case 0b110: // SXTW
+		extended_op2 = uint64(int32(op2))
+	case 0b111: // SXTX
+		extended_op2 = op2
+	}
+
+	shifted_op2 := extended_op2 << shift
+
+	var result uint64
+	if datasize == 32 {
+		result = uint64(uint32(op1) + uint32(shifted_op2))
+	} else {
+		result = op1 + shifted_op2
+	}
+
+	if op.Rd&0b11111 == 31 {
+		m.SP = result
+	} else {
+		m.R[op.Rd&0b11111] = result
+	}
 }
 
-// C6.2.1 ADD (vector)
+// ADD (vector)
 type AddVector struct {
-	// Q = bit 30
-	Q byte // 1 bit
-	// Op = b0
-	// U = bit 28
-	U byte // 1 bit
-	// OpCode = b010100
-	Size byte // 2 bits
-	// OpCode2 = b1
+	Q    byte   // 1 bit
+	Size byte   // 2 bits
 	Rm   uint16 // 5 bits
-	// OpCode3 = b0001
 	Rn   uint16 // 5 bits
 	Rd   uint16 // 5 bits
 }
 
 func (op *AddVector) Encode() uint32 {
-	return uint32(op.Q)<<30 |
+	return (0b0 << 31) |
+		uint32(op.Q)<<30 |
 		(0b0 << 29) |
-		uint32(op.U)<<28 |
-		(0b010100 << 22) |
-		uint32(op.Size)<<20 |
-		(0b1 << 19) |
-		uint32(op.Rm)<<14 |
-		(0b0001 << 10) |
+		(0b01110 << 24) |
+		uint32(op.Size)<<22 |
+		(0b1 << 21) |
+		uint32(op.Rm)<<16 |
+		(0b0010 << 12) |
+		(0b10 << 10) |
 		uint32(op.Rn)<<5 |
 		uint32(op.Rd)
 }
 
 func (op *AddVector) Execute(m *machine.Machine) {
-	// TODO: Implement this
+	var esize int
+	var elements int
+	switch op.Size {
+	case 0b00:
+		esize = 8
+	case 0b01:
+		esize = 16
+	case 0b10:
+		esize = 32
+	case 0b11:
+		esize = 64
+	}
+
+	lanes := 128 / esize
+	if op.Q == 1 {
+		lanes = 256 / esize
+	}
+
+	for i := 0; i < lanes; i++ {
+		op1 := m.V[op.Rn].Get(i, esize)
+		op2 := m.V[op.Rm].Get(i, esize)
+		result := op1 + op2
+		m.V[op.Rd].Set(i, esize, result)
+	}
 }
