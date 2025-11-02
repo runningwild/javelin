@@ -20,6 +20,10 @@ add w2, w3, #5
 		os.Exit(1)
 	}
 
+	for _, inst := range insts {
+		fmt.Printf("%v\n", inst)
+	}
+
 	m := machine.New(1024 * 1024)
 	m.R[3] = 10
 	m.R[5] = 20
