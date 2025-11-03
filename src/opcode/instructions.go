@@ -4,6 +4,8 @@
 package opcode
 
 import (
+	"fmt"
+
 	"github.com/runningwild/javelin/machine"
 )
 
@@ -14,25 +16,43 @@ type Instruction interface {
 
 // C6.2.5 ADD (immediate)
 type AddImmedite struct {
-	Sf byte // 1 bit
-	// Op = b0
-	// S  = b0
-	// OpCode = b100010
-	Sh  byte   // 1 bit
-	Imm uint16 // 12 bits
-	Rn  uint16 // 5 bits
-	Rd  uint16 // 5 bits
+	Sf  uint32 // 1 bit
+	Sh  uint32 // 1 bit
+	Imm uint32 // 12 bits
+	Rn  uint32 // 5 bits
+	Rd  uint32 // 5 bits
+}
+
+type bits struct {
+	v uint32
+	b int
+}
+
+func buildUint32(sbs ...bits) uint32 {
+	var V uint32
+	t := 0
+	for _, sb := range sbs {
+		V = V << sb.b
+		V = V | (sb.v & uint32((1<<sb.b)-1))
+		t += sb.b
+	}
+	if t != 32 {
+		panic(fmt.Sprintf("tried to construct uint32 with %d bits", t))
+	}
+	return V
 }
 
 func (op *AddImmedite) Encode() uint32 {
-	return uint32(op.Sf)<<31 |
-		0b0<<30 |
-		0b0<<29 |
-		0b100010<<23 |
-		uint32(op.Sh)<<22 |
-		uint32(op.Imm)<<10 |
-		uint32(op.Rn)<<5 |
-		uint32(op.Rd)
+	return buildUint32([]bits{
+		{op.Sf, 1},
+		{0, 1}, // op
+		{0, 1}, // S
+		{0b100010, 6},
+		{op.Sh, 1},
+		{op.Imm, 12},
+		{op.Rn, 5},
+		{op.Rd, 5},
+	}...)
 }
 
 func (op *AddImmedite) Execute(m *machine.Machine) {
@@ -63,29 +83,27 @@ func (op *AddImmedite) Execute(m *machine.Machine) {
 
 // C6.2.6 ADD (shifted register)
 type AddShiftedRegister struct {
-	Sf byte // 1 bit
-	// Op = b0
-	// S  = b0
-	// OpCode = b01011
-	Shift byte // 2 bits
-	// _ = b0
-	Rm  uint16 // 5 bits
-	Imm uint16 // 6 bits
-	Rn  uint16 // 5 bits
-	Rd  uint16 // 5 bits
+	Sf    uint32 // 1 bit
+	Shift uint32 // 2 bits
+	Rm    uint32 // 5 bits
+	Imm   uint32 // 6 bits
+	Rn    uint32 // 5 bits
+	Rd    uint32 // 5 bits
 }
 
 func (op *AddShiftedRegister) Encode() uint32 {
-	return uint32(op.Sf)<<31 |
-		(0b0 << 30) |
-		(0b0 << 29) |
-		(0b01011 << 24) |
-		uint32(op.Shift)<<22 |
-		(0b0 << 21) |
-		uint32(op.Rm)<<16 |
-		uint32(op.Imm)<<10 |
-		uint32(op.Rn)<<5 |
-		uint32(op.Rd)
+	return buildUint32([]bits{
+		{op.Sf, 1},
+		{0, 1}, // op
+		{0, 1}, // S
+		{0b01011, 5},
+		{op.Shift, 2},
+		{0, 1},
+		{op.Rm, 5},
+		{op.Imm, 6},
+		{op.Rn, 5},
+		{op.Rd, 5},
+	}...)
 }
 
 func (op *AddShiftedRegister) Execute(m *machine.Machine) {
@@ -137,31 +155,15 @@ func (op *AddShiftedRegister) Execute(m *machine.Machine) {
 
 // C6.2.4 ADD (extended register)
 type AddExtendedRegister struct {
-	Sf byte // 1 bit
-	// Op = b0
-	// S  = b0
-	// OpCode = b01011
-	// _ = b1
+	Sf  uint32 // 1 bit
 	Opt byte   // 2 bits
-	Imm uint16 // 3 bits
-	// _ = b00
-	Rm  uint16 // 5 bits
-	Rn  uint16 // 5 bits
-	Rd  uint16 // 5 bits
+	Imm uint32 // 3 bits
+	Rm  uint32 // 5 bits
+	Rn  uint32 // 5 bits
+	Rd  uint32 // 5 bits
 }
 
 func (op *AddExtendedRegister) Encode() uint32 {
-	return uint32(op.Sf)<<31 |
-		(0b0 << 30) |
-		(0b0 << 29) |
-		(0b01011 << 24) |
-		(0b1 << 21) |
-		uint32(op.Opt)<<19 |
-		uint32(op.Imm)<<16 |
-		(0b00 << 14) |
-		uint32(op.Rm)<<10 |
-		uint32(op.Rn)<<5 |
-		uint32(op.Rd)
 }
 
 func (op *AddExtendedRegister) Execute(m *machine.Machine) {
@@ -220,25 +222,14 @@ func (op *AddExtendedRegister) Execute(m *machine.Machine) {
 
 // ADD (vector)
 type AddVector struct {
-	Q    byte   // 1 bit
-	Size byte   // 2 bits
-	Rm   uint16 // 5 bits
-	Rn   uint16 // 5 bits
-	Rd   uint16 // 5 bits
+	Q    uint32 // 1 bit
+	Size uint32 // 2 bits
+	Rm   uint32 // 5 bits
+	Rn   uint32 // 5 bits
+	Rd   uint32 // 5 bits
 }
 
 func (op *AddVector) Encode() uint32 {
-	return (0b0 << 31) |
-		uint32(op.Q)<<30 |
-		(0b0 << 29) |
-		(0b01110 << 24) |
-		uint32(op.Size)<<22 |
-		(0b1 << 21) |
-		uint32(op.Rm)<<16 |
-		(0b0010 << 12) |
-		(0b10 << 10) |
-		uint32(op.Rn)<<5 |
-		uint32(op.Rd)
 }
 
 func (op *AddVector) Execute(m *machine.Machine) {
