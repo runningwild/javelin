@@ -243,7 +243,6 @@ func (op *AddVector) Encode() uint32 {
 
 func (op *AddVector) Execute(m *machine.Machine) {
 	var esize int
-	var elements int
 	switch op.Size {
 	case 0b00:
 		esize = 8
@@ -255,10 +254,11 @@ func (op *AddVector) Execute(m *machine.Machine) {
 		esize = 64
 	}
 
-	lanes := 128 / esize
+	datasize := 64
 	if op.Q == 1 {
-		lanes = 256 / esize
+		datasize = 128
 	}
+	lanes := datasize / esize
 
 	for i := 0; i < lanes; i++ {
 		op1 := m.V[op.Rn].Get(i, esize)
