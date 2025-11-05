@@ -127,16 +127,16 @@ func (i *AddImmediate) Validate() ([]opcode.Instruction, error) {
 		return nil, fmt.Errorf("failed to parse immediate: %w", err)
 	}
 	var op opcode.AddImmedite
-	op.Rd = uint16(i.Rd)
-	op.Rn = uint16(i.Rn)
+	op.Rd = uint32(i.Rd)
+	op.Rn = uint32(i.Rn)
 
 	if imm&0xfff == imm {
-		op.Imm = uint16(imm)
+		op.Imm = uint32(imm)
 		op.Sh = 0
 		return []opcode.Instruction{&op}, nil
 	}
 	if (imm>>12)&0xfff == imm {
-		op.Imm = uint16(imm >> 12)
+		op.Imm = uint32(imm >> 12)
 		op.Sh = 1
 		return []opcode.Instruction{&op}, nil
 	}

@@ -164,6 +164,7 @@ type AddExtendedRegister struct {
 }
 
 func (op *AddExtendedRegister) Encode() uint32 {
+	return 0
 }
 
 func (op *AddExtendedRegister) Execute(m *machine.Machine) {
@@ -230,6 +231,7 @@ type AddVector struct {
 }
 
 func (op *AddVector) Encode() uint32 {
+	return 0
 }
 
 func (op *AddVector) Execute(m *machine.Machine) {
