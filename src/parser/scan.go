@@ -17,6 +17,42 @@ type Instruction struct {
 	OptionalOperand *OptionalOperand `( "{" "," @@ "}" )?`
 }
 
+func (inst Instruction) Make() {
+	fmt.Printf("%s ", inst.Mnemonic)
+	for i, op := range inst.Operands {
+		if i > 0 {
+			fmt.Printf(", ")
+		}
+		fmt.Printf("%s", op.Make())
+	}
+	fmt.Printf("\n")
+}
+
+// func (inst Instruction) ParseableStruct() string {
+// ADD <Wd>, <Wn>, <Wm>{, <shift> #<amount>}
+/*
+
+	type AddInstruction struct {
+		Wd Register                `"ADD" "<" "W" @RegisterNumber`
+		Wn Register                `  "," "<" "W" @RegisterNumber`
+		Wm Register                `  "," "<" "W" @RegisterNumber`
+		Opt *AddOptionalParameter  ` ("," @@)?`
+	}
+
+	type AddOptionalParameter struct {
+		Shift string  `@Shift`
+		Amount uint32 `@Integer`
+	}
+
+*/
+
+// ADD <Wd|WSP>, <Wn|WSP>, #<imm>{, <shift>}
+// ADD <Wd|WSP>, <Wn|WSP>, <Wm>{, <extend> {#<amount>}}
+// ADD <Xd|SP>, <Xn|SP>, #<imm>{, <shift>}
+// ADD <Xd|SP>, <Xn|SP>, <R><m>{, <extend> {#<amount>}}
+// ADD <Xd>, <Xn>, <Xm>{, <shift> #<amount>}
+//}
+
 type OptionalOperand struct {
 	Option            string     `"<" @Variable ">"`
 	Parameter         *Parameter `( @@ |`
@@ -28,6 +64,13 @@ type Operand struct {
 	Address   *Address   `@@`
 }
 
+func (op *Operand) Make() string {
+	if op.Parameter != nil {
+		return op.Parameter.Make()
+	}
+	return op.Address.Make()
+}
+
 type Address struct {
 	Register       Parameter  `"[" @@`
 	Offset         *Parameter `( (    "," @@    ) |`
@@ -35,11 +78,19 @@ type Address struct {
 	Bang           *string    `"]" (@"!")?`
 }
 
+func (a *Address) Make() string {
+	return "address"
+}
+
 type Parameter struct {
 	Imm   *string             `("#" "<" @Variable      ">") |`
 	F     *FixedWidthRegister `(    "<" @@             ">") |`
 	V     *Expression         `(    "<" "R" ">" "<" @@ ">") |`
 	Label *string             `     "<" @Variable      ">"`
+}
+
+func (p *Parameter) Make() string {
+	return "param"
 }
 
 type Register struct {
@@ -77,6 +128,10 @@ type Expression struct {
 type ExpressionSuffix struct {
 	Operator   string     `@("-" | "+")`
 	Expression Expression `@@`
+}
+
+func ParseInstruction(s string) (*Instruction, error) {
+	return Parser.ParseString("", s)
 }
 
 var Parser *participle.Parser[Instruction]
