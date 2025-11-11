@@ -12,19 +12,34 @@ import (
 )
 
 type Instruction struct {
-	Mnemonic string    `@ArchIdent`
-	Operands []Operand `(@@ ("," @@)*)?`
+	Mnemonic        string           `@ArchIdent`
+	Operands        []Operand        `( @@ ("," @@)*   )?`
+	OptionalOperand *OptionalOperand `( "{" "," @@ "}" )?`
+}
+
+type OptionalOperand struct {
+	Option            string     `"<" @Variable ">"`
+	Parameter         *Parameter `( @@ |`
+	OptionalParameter *Parameter `  ("{" @@ "}") )? `
 }
 
 type Operand struct {
-	Parameter Parameter `@@`
+	Parameter *Parameter `@@ |`
+	Address   *Address   `@@`
+}
+
+type Address struct {
+	Register       Parameter  `"[" @@`
+	Offset         *Parameter `( (    "," @@    ) |`
+	OptionalOffset *Parameter `  ("{" "," @@ "}") )?`
+	Bang           *string    `"]" (@"!")?`
 }
 
 type Parameter struct {
-	Imm   *string             `("#" "<" @Variable ">") |`
-	F     *FixedWidthRegister `("<" @@ ">") |`
-	V     *Expression         `("<" "R" ">" "<" @@ ">") |`
-	Label *string             `"<" @Variable ">"`
+	Imm   *string             `("#" "<" @Variable      ">") |`
+	F     *FixedWidthRegister `(    "<" @@             ">") |`
+	V     *Expression         `(    "<" "R" ">" "<" @@ ">") |`
+	Label *string             `     "<" @Variable      ">"`
 }
 
 type Register struct {
