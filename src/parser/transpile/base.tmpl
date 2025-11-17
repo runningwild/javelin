@@ -1,0 +1,15 @@
+package instruction
+
+import (
+    "github.com/runningwild/javelin/machine"
+)
+
+type Instruction interface {
+    Encode() uint32
+    Execute(*machine.Machine)
+}
+
+var parsers map[string][]Parser = map[string][]Parser{}
+
+// A return of nil, nil means that the mnemonic doesn't match.
+type Parser func(string) (Instruction, error)

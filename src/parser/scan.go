@@ -18,12 +18,11 @@ type Instruction struct {
 }
 
 func (inst Instruction) Make() {
-	fmt.Printf("%s ", inst.Mnemonic)
 	for i, op := range inst.Operands {
 		if i > 0 {
 			fmt.Printf(", ")
 		}
-		fmt.Printf("%s", op.Make())
+		fmt.Printf("%s", op.String())
 	}
 	fmt.Printf("\n")
 }
@@ -64,7 +63,7 @@ type Operand struct {
 	Address   *Address   `@@`
 }
 
-func (op *Operand) Make() string {
+func (op *Operand) String() string {
 	if op.Parameter != nil {
 		return op.Parameter.Make()
 	}
@@ -83,21 +82,23 @@ func (a *Address) Make() string {
 }
 
 type Parameter struct {
-	Imm   *string             `("#" "<" @Variable      ">") |`
-	F     *FixedWidthRegister `(    "<" @@             ">") |`
-	V     *Expression         `(    "<" "R" ">" "<" @@ ">") |`
-	Label *string             `     "<" @Variable      ">"`
+	Imm   *string             `("#" "<" @Variable             ">") |`
+	F     *FixedWidthRegister `(    "<" @@                    ">") |`
+	V     *string             `(    "<" "R" ">" "<" @Variable ">") |`
+	Label *string             `     "<" @Variable             ">"`
 }
 
 func (p *Parameter) Make() string {
-	return "param"
-}
-
-type Register struct {
-	// Possible forms:
-	// <Xn>, <Xm>, <Wn>, <Wn>, <R><m>, <X(n+1)>, <Xn|SP>
-	Fixed    *FixedWidthRegister    `@@ |`
-	Variable *VariableWidthRegister `@@`
+	switch {
+	case p.Imm != nil:
+		return fmt.Sprintf("#<%s>", *p.Imm)
+	case p.F != nil:
+	case p.V != nil:
+	case p.Label != nil:
+	default:
+		return "error"
+	}
+	return ""
 }
 
 type FixedWidthRegister struct {

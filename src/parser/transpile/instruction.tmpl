@@ -1,0 +1,52 @@
+package instruction
+
+type inst_{{.Instruction.Mnemonic}}_{{.Section}} struct {
+    {{- range $index, $operand := .Instruction.Operands}}
+        {{- with $operand.Parameter}}
+            {{- with .Imm}}
+                {{$.Upperize .}} uint32 `"#" @Integer`
+            {{- else with .F}}
+                {{.Width.Width}}{{.Index.Value.Variable}} uint32 `{{if eq $index 0}}"{{$.Instruction.Mnemonic}}" {{else}}"," {{end}}"{{.Width.Width}}" @Integer`
+            {{- else with .V}}
+                Rwidth string `@("W"|"X")`
+                R{{.}} uint32 `@Integer`
+            {{- else with .Label}}
+                {{$.Upperize .}} string `@Ident`
+            {{- end}}
+        {{- end}}
+    {{- end}}
+}
+
+type Instruction{{.Instruction.Mnemonic}}_{{.Section}} struct {
+    fields inst_{{.Instruction.Mnemonic}}_{{.Section}}
+}
+
+{{- range $index, $operand := .Instruction.Operands}}
+
+    {{- with $operand.Parameter}}
+        {{- with .Imm}}
+func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .}}() uint32 {
+    return i.fields.{{$.Upperize .}}
+}
+        {{- else with .F}}
+func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .Width.Width}}{{.Index.Value.Variable}}() uint32 {
+    return i.fields.{{.Width.Width}}{{.Index.Value.Variable}}
+}
+        {{- else with .V}}
+func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) R() string {
+    return i.fields.Rwidth
+}
+func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .}}() uint32 {
+    return i.fields.R{{.}}
+}
+        {{- else with .Label}}
+        {{- end}}
+    {{- end}}
+{{- end}}
+
+func init() {
+    parsers["{{$.Instruction.Mnemonic}}"] = append(parsers["{{$.Instruction.Mnemonic}}"], func(s string) (Instruction, error) {
+        return nil, nil
+    })
+}
+
