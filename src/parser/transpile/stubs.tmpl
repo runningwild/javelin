@@ -1,0 +1,17 @@
+package instruction
+
+func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Encode() uint32 {
+  // TODO: fill this out
+  return 0
+}
+
+func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Mask() uint32 {
+  // TODO: fill this out
+  return 0
+}
+
+func Decode{{.Instruction.Mnemonic}}_{{.Section}}(v uint32) (*Instruction{{.Instruction.Mnemonic}}_{{.Section}}, error) {
+  // TODO: fill this out
+  return nil, nil
+}
+

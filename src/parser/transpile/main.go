@@ -16,12 +16,16 @@ import (
 )
 
 //go:embed instruction.tmpl
-var instTmpl string
-var t = template.Must(template.New("instructionTmpl").Parse(instTmpl))
+var instData string
+var instTmpl = template.Must(template.New("instructionTmpl").Parse(instData))
+
+//go:embed stubs.tmpl
+var stubsData string
+var stubsTmpl = template.Must(template.New("stubsTmpl").Parse(stubsData))
 
 //go:embed base.tmpl
-var baseTmpl string
-var b = template.Must(template.New("baseTmpl").Parse(instTmpl))
+var baseData string
+var baseTmpl = template.Must(template.New("baseTmpl").Parse(baseData))
 
 var (
 	input  = flag.String("input", "", "Input file which should be text version of instruction list")
@@ -99,19 +103,28 @@ func doit(ctx context.Context, input, outdir string) error {
 			continue
 		}
 		fmt.Printf("%v\n", inst)
-		outpath := filepath.Join(outdir, fmt.Sprintf("%s_%s.go", strings.ToLower(inst.Mnemonic), section))
-		outfile, err := os.Create(outpath)
+		instpath := filepath.Join(outdir, fmt.Sprintf("%s_%s.go", strings.ToLower(inst.Mnemonic), section))
+		instfile, err := os.Create(instpath)
 		if err != nil {
-			return fmt.Errorf("failed to create output file %q: %w", outpath, err)
+			return fmt.Errorf("failed to create output instruction file %q: %w", instpath, err)
 		}
-		defer outfile.Close()
+		defer instfile.Close()
+		stubpath := filepath.Join(outdir, fmt.Sprintf("%s_%s_stubs.go", strings.ToLower(inst.Mnemonic), section))
+		stubfile, err := os.Create(stubpath)
+		if err != nil {
+			return fmt.Errorf("failed to create output stub file %q: %w", stubpath, err)
+		}
+		defer stubfile.Close()
 		target := txp{
 			Instruction: inst,
 			Descriptor:  descriptor,
 			Section:     section,
 		}
-		if err := t.Execute(outfile, target); err != nil {
-			return fmt.Errorf("failed to execute template on %q: %w", inst.Mnemonic, err)
+		if err := instTmpl.Execute(instfile, target); err != nil {
+			return fmt.Errorf("failed to execute instruction template on %q: %w", inst.Mnemonic, err)
+		}
+		if err := stubsTmpl.Execute(stubfile, target); err != nil {
+			return fmt.Errorf("failed to execute stubs template on %q: %w", inst.Mnemonic, err)
 		}
 		N--
 		if N < 0 {
@@ -119,7 +132,7 @@ func doit(ctx context.Context, input, outdir string) error {
 		}
 	}
 
-	os.WriteFile(filepath.Join(outdir, "base.go"), []byte(baseTmpl), 0644)
+	os.WriteFile(filepath.Join(outdir, "base.go"), []byte(baseData), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create base.go in output dir: %w", err)
 	}
