@@ -1,5 +1,8 @@
 package instruction
 
+import "github.com/runningwild/javelin/machine"
+
+
 func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Encode() uint32 {
   // TODO: fill this out
   return 0
@@ -8,6 +11,10 @@ func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Encode() uint32 {
 func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Mask() uint32 {
   // TODO: fill this out
   return 0
+}
+
+func (i Instruction{{.Instruction.Mnemonic}}_{{.Section}}) Execute(m *machine.Machine) {
+  // TODO: fill this out
 }
 
 func Decode{{.Instruction.Mnemonic}}_{{.Section}}(v uint32) (*Instruction{{.Instruction.Mnemonic}}_{{.Section}}, error) {

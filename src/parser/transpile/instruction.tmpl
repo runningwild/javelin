@@ -1,5 +1,7 @@
 package instruction
 
+import "github.com/alecthomas/participle/v2"
+
 type inst_{{.Instruction.Mnemonic}}_{{.Section}} struct {
     {{- range $index, $operand := .Instruction.Operands}}
         {{- with $operand.Parameter}}
@@ -18,7 +20,7 @@ type inst_{{.Instruction.Mnemonic}}_{{.Section}} struct {
 }
 
 type Instruction{{.Instruction.Mnemonic}}_{{.Section}} struct {
-    fields inst_{{.Instruction.Mnemonic}}_{{.Section}}
+    Fields inst_{{.Instruction.Mnemonic}}_{{.Section}} `@@`
 }
 
 {{- range $index, $operand := .Instruction.Operands}}
@@ -26,18 +28,18 @@ type Instruction{{.Instruction.Mnemonic}}_{{.Section}} struct {
     {{- with $operand.Parameter}}
         {{- with .Imm}}
 func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .}}() uint32 {
-    return i.fields.{{$.Upperize .}}
+    return i.Fields.{{$.Upperize .}}
 }
         {{- else with .F}}
 func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .Width.Width}}{{.Index.Value.Variable}}() uint32 {
-    return i.fields.{{.Width.Width}}{{.Index.Value.Variable}}
+    return i.Fields.{{.Width.Width}}{{.Index.Value.Variable}}
 }
         {{- else with .V}}
 func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) R() string {
-    return i.fields.Rwidth
+    return i.Fields.Rwidth
 }
 func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .}}() uint32 {
-    return i.fields.R{{.}}
+    return i.Fields.R{{.}}
 }
         {{- else with .Label}}
         {{- end}}
@@ -45,8 +47,15 @@ func (i Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}) {{$.Upperize .}}() 
 {{- end}}
 
 func init() {
+	var p = participle.MustBuild[Instruction{{$.Instruction.Mnemonic}}_{{$.Section}}](
+		participle.Lexer(asmDef),
+	)
     parsers["{{$.Instruction.Mnemonic}}"] = append(parsers["{{$.Instruction.Mnemonic}}"], func(s string) (Instruction, error) {
-        return nil, nil
+		inst, err := p.ParseString("", s)
+        if err != nil {
+            return nil, nil
+        }
+        return inst, nil
     })
 }
 
