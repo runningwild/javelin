@@ -73,14 +73,13 @@ func doit(ctx context.Context, input, outdir string) error {
 	var descriptor string
 	var instDefRE *regexp.Regexp
 
-	N := 20
+	N := 1000000
 	for _, line := range strings.Split(string(data), "\n") {
 		m := instHeadingRE.FindStringSubmatch(line)
 		if m != nil {
 			section = m[1]
 			opcodes = strings.Split(m[2], ", ")
 			descriptor = m[5]
-			fmt.Printf("%s %v %s\n", section, opcodes, descriptor)
 			var err error
 			instDefRE, err = regexp.Compile(fmt.Sprintf(`^\s*(%s)\s+(.*)\s*$`, strings.Join(opcodes, "|")))
 			if err != nil {
@@ -95,14 +94,14 @@ func doit(ctx context.Context, input, outdir string) error {
 		if m == nil {
 			continue
 		}
-		fmt.Printf("%s %s\n", m[1], m[2])
 		inst, err := parser.ParseInstruction(line)
 		if err != nil {
 			err = fmt.Errorf("failed to parse %q: %w", line, err)
 			fmt.Printf("%v\n", err)
 			continue
 		}
-		fmt.Printf("%v\n", inst)
+		fmt.Printf("%s\n", line)
+		fmt.Printf("  %v\n", inst)
 		instpath := filepath.Join(outdir, fmt.Sprintf("%s_%s.go", strings.ToLower(inst.Mnemonic), section))
 		instfile, err := os.Create(instpath)
 		if err != nil {
@@ -120,9 +119,9 @@ func doit(ctx context.Context, input, outdir string) error {
 			Descriptor:  descriptor,
 			Section:     section,
 		}
-		if err := instTmpl.Execute(instfile, target); err != nil {
-			return fmt.Errorf("failed to execute instruction template on %q: %w", inst.Mnemonic, err)
-		}
+		// if err := instTmpl.Execute(instfile, target); err != nil {
+		// 	return fmt.Errorf("failed to execute instruction template on %q: %w", inst.Mnemonic, err)
+		// }
 		if err := stubsTmpl.Execute(stubfile, target); err != nil {
 			return fmt.Errorf("failed to execute stubs template on %q: %w", inst.Mnemonic, err)
 		}

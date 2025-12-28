@@ -17,6 +17,11 @@ type inst_{{.Instruction.Mnemonic}}_{{.Section}} struct {
             {{- end}}
         {{- end}}
     {{- end}}
+    {{- if .Instruction.OptionalOperand}}
+      // {{.Instruction.OptionalOperand.Option}}
+      // {{.Instruction.OptionalOperand.Parameter}}
+      // {{.Instruction.OptionalOperand.OptionalParameter}}
+    {{- end}}
 }
 
 type Instruction{{.Instruction.Mnemonic}}_{{.Section}} struct {

@@ -14,7 +14,7 @@ import (
 type Instruction struct {
 	Mnemonic        string           `@ArchIdent`
 	Operands        []Operand        `( @@ ("," @@)*   )?`
-	OptionalOperand *OptionalOperand `( "{" "," @@ "}" )?`
+	OptionalOperand *OptionalOperand `( "{" ","? @@ "}" )?`
 }
 
 func (inst Instruction) Make() {
@@ -53,7 +53,7 @@ func (inst Instruction) Make() {
 //}
 
 type OptionalOperand struct {
-	Option            string     `"<" @Variable ">"`
+	Option            string     `(@"LSL") | ("<" @Variable ">")`
 	Parameter         *Parameter `( @@ |`
 	OptionalParameter *Parameter `  ("{" @@ "}") )? `
 }
@@ -82,16 +82,48 @@ func (a *Address) Make() string {
 }
 
 type Parameter struct {
-	Imm   *string             `("#" "<" @Variable             ">") |`
-	F     *FixedWidthRegister `(    "<" @@                    ">") |`
-	V     *string             `(    "<" "R" ">" "<" @Variable ">") |`
-	Label *string             `     "<" @Variable             ">"`
+	Imm   *ImmediateValue     `( @@                ) |`
+	F     *FixedWidthRegister `( "<" @@                    ">") |`
+	V     *string             `( "<" "R" ">" "<" @Variable ">") |`
+	Label *string             `  "<" @Variable             ">"`
+}
+
+// UserOperand is stuff inside of a "<" ">" pair.
+type UserOperand struct {
+	Register *UserRegister `"<" ( @@ |`
+	Value    *UserValue    `      @@ )  ">"`
+}
+
+type UserRegister struct {
+	Type      string  `( @RegisterType    "><"?    `
+	Index     *string `   ( @Variable     |        `
+	Reference *string `     ( "(" @Variable        `
+	Offset    *int    `       "+" @Digit ")" ) ) ) `
+	Special   *string `("|" @SpecialRegister)?     `
+}
+
+type UserValue struct {
+	Name string `@Variable`
+}
+
+func (p *Parameter) String() string {
+	switch {
+	case p.Imm != nil:
+		return "imm:" + p.Imm.String()
+	case p.F != nil:
+		return p.F.String()
+	case p.V != nil:
+		return "v:" + *p.V
+	case p.Label != nil:
+		return "label:" + *p.Label
+	}
+	return "error"
 }
 
 func (p *Parameter) Make() string {
 	switch {
 	case p.Imm != nil:
-		return fmt.Sprintf("#<%s>", *p.Imm)
+		return fmt.Sprintf("#<%s>", p.Imm.String())
 	case p.F != nil:
 	case p.V != nil:
 	case p.Label != nil:
@@ -105,6 +137,13 @@ type FixedWidthRegister struct {
 	Width RegisterWidth `@@`
 	Index Expression    `@@`
 	Alt   *string       `("|" @ArchIdent)?`
+}
+
+func (fwr *FixedWidthRegister) String() string {
+	if fwr.Alt != nil {
+		return fwr.Width.Width + fwr.Index.String()
+	}
+	return fwr.Width.Width + fwr.Index.String()
 }
 
 type RegisterWidth struct {
@@ -121,14 +160,49 @@ type Value struct {
 	Number   *string `@Number`
 }
 
+func (v *Value) String() string {
+	if v.Variable != nil {
+		return "var:'" + *v.Variable + "'"
+	}
+	return "num:'" + *v.Number + "'"
+}
+
+type ImmediateValue struct {
+	Variable *string `"#"( ("<" @Variable ">") |`
+	Number   *string `   @Number             )`
+}
+
+func (v *ImmediateValue) String() string {
+	if v.Variable != nil {
+		return "#<" + *v.Variable + ">"
+	}
+	return "#" + *v.Number + ""
+}
+
 type Expression struct {
 	Value  *Value            `(@@`
 	Suffix *ExpressionSuffix `@@?) |`
 	Paren  *Expression       `"(" @@ ")"`
 }
+
+func (e *Expression) String() string {
+	if e.Paren != nil {
+		return "(" + e.Paren.String() + ")"
+	}
+	s := e.Value.String()
+	if e.Suffix != nil {
+		s += e.Suffix.String()
+	}
+	return s
+}
+
 type ExpressionSuffix struct {
 	Operator   string     `@("-" | "+")`
 	Expression Expression `@@`
+}
+
+func (es *ExpressionSuffix) String() string {
+	return es.Operator + es.Expression.String()
 }
 
 func ParseInstruction(s string) (*Instruction, error) {
@@ -136,22 +210,32 @@ func ParseInstruction(s string) (*Instruction, error) {
 }
 
 var Parser *participle.Parser[Instruction]
-var asmDef *lexer.StatefulDefinition
-
-func Lexer() *lexer.StatefulDefinition {
-	return asmDef
-}
+var asmDef lexer.Definition
 
 func init() {
-	asmDef = lexer.MustSimple([]lexer.SimpleRule{
-		{"ArchIdent", `[A-Z]+`},
-		{"Variable", `[a-z][a-z0-9]*`},
-		{"Comment", `(?i)rem[^\n]*`},
-		{"String", `"(\\"|[^"])*"`},
-		{"Punct", `[-[!@#$%^&*()+_={}\|:;"'<,>.?/]|]`},
-		{"Number", `[-+]?(\d*\.)?\d+`},
-		{"whitespace", `[ \t]+`},
-	})
+	asmDef = lexer.MustStateful(
+		lexer.Rules{
+			"Root": {
+				{"ArchIdent", `[A-Z][A-Z0-9]*`, nil},
+				{"Variable", `[a-z][a-z0-9_]*`, nil},
+				{"Comment", `(?i)rem[^\n]*`, nil},
+				{"String", `"(\\"|[^"])*"`, nil},
+				{"Punct", `[-[!@#$%^&*()+_={}\|:;"',.?/]|]`, nil},
+				{"Number", `[-+]?(\d*\.)?\d+`, nil},
+				{"UserVarStart", `<`, lexer.Push("UserVar")},
+				{"whitespace", `[ \t]+`, nil},
+			},
+			"UserVar": {
+				{"SpecialRegister", `W?SP`, nil},
+				{"RegisterType", `[A-Z]`, nil},
+				{"Variable", `[a-z][a-z0-9_]*`, nil},
+				{"Stuff", `[+|()]`, nil},
+				{"Digit", `[0-9]`, nil},
+				{"UserVarRepeat", "><", nil},
+				{"UserVarEnd", `>`, lexer.Pop()},
+			},
+		},
+	)
 	Parser = participle.MustBuild[Instruction](
 		participle.Lexer(asmDef),
 	)

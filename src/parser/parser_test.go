@@ -24,6 +24,25 @@ func TestParseParameter(t *testing.T) {
 	}
 }
 
+func TestParseUserOperand(t *testing.T) {
+	p := participle.MustBuild[UserOperand](
+		participle.Lexer(asmDef),
+	)
+	for _, reg := range []string{
+		"<Xm>",
+		"<Wn>",
+		"<Wbeans>",
+		"<R><n>",
+		"<X(s+1)>",
+		"<Xd|WSP>",
+	} {
+		_, err := p.ParseString("", reg)
+		if err != nil {
+			t.Errorf("failed to parse %q: %v", reg, err)
+		}
+	}
+}
+
 func TestParseExpression(t *testing.T) {
 	p := participle.MustBuild[Expression](
 		participle.Lexer(asmDef),
